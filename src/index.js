@@ -13,8 +13,17 @@ function ChildComponent(props) {
 }
 
 function App(props) {
+  const [a, setA] = React.useState("x");
   return (
     <div className="App">
+      <button
+        onClick={() => {
+          setA(Math.random());
+        }}
+      >
+        click
+      </button>
+      {a}
       <AppContext.Provider
         value={{
           name: "chenjiang",

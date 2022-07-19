@@ -253,18 +253,14 @@ export function updateContainer(
   parentComponent: ?React$Component<any, any>,
   callback: ?Function,
 ): Lane {
-  if (__DEV__) {
-    onScheduleRoot(container, element);
-  }
+  
+  // 获取fiberRoort.current, 也就是rootFiber, Fiber树的头结点
   const current = container.current;
-  const eventTime = requestEventTime();
-  if (__DEV__) {
-    // $FlowExpectedError - jest isn't a global, and isn't recognized outside of tests
-    if ('undefined' !== typeof jest) {
-      warnIfUnmockedScheduler(current);
-      warnIfNotScopedWithMatchingAct(current);
-    }
-  }
+
+  /* 当前触发更新时候的时间戳 */
+  const eventTime = requestEventTime(); 
+
+  // 计算当前节点lane(优先级)
   const lane = requestUpdateLane(current);
 
   if (enableSchedulingProfiler) {
@@ -278,23 +274,9 @@ export function updateContainer(
     container.pendingContext = context;
   }
 
-  if (__DEV__) {
-    if (
-      ReactCurrentFiberIsRendering &&
-      ReactCurrentFiberCurrent !== null &&
-      !didWarnAboutNestedUpdates
-    ) {
-      didWarnAboutNestedUpdates = true;
-      console.error(
-        'Render methods should be a pure function of props and state; ' +
-          'triggering nested component updates from render is not allowed. ' +
-          'If necessary, trigger nested updates in componentDidUpdate.\n\n' +
-          'Check the render method of %s.',
-        getComponentName(ReactCurrentFiberCurrent.type) || 'Unknown',
-      );
-    }
-  }
-
+  /**
+   * 根据lane(优先级)计算当前节点的update对象
+   */
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
@@ -302,19 +284,14 @@ export function updateContainer(
 
   callback = callback === undefined ? null : callback;
   if (callback !== null) {
-    if (__DEV__) {
-      if (typeof callback !== 'function') {
-        console.error(
-          'render(...): Expected the last optional `callback` argument to be a ' +
-            'function. Instead received: %s.',
-          callback,
-        );
-      }
-    }
+    
     update.callback = callback;
   }
 
+  // 将update对象入队
   enqueueUpdate(current, update);
+
+  // 调度当前的Fiber节点(也就是rootFiber1)
   scheduleUpdateOnFiber(current, lane, eventTime);
 
   return lane;

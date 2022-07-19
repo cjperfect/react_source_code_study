@@ -182,7 +182,7 @@ function legacyRenderSubtreeIntoContainer(
       container,
       forceHydrate,
     );
-    console.log(root);
+    console.log('首次挂载时root对象: ', root);
 
 
     // 也就是ReactDOM.render时候, 产生了fiberRoot

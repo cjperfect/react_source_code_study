@@ -256,7 +256,9 @@ export function updateContainer(
 
   // 获取fiberRoort.current, 也就是rootFiber, Fiber树的头结点
   const current = container.current;
-  const eventTime = requestEventTime();
+
+  /* 当前触发更新时候的时间戳 */
+  const eventTime = requestEventTime(); 
 
   // 计算当前节点lane(优先级)
   const lane = requestUpdateLane(current);
@@ -272,7 +274,9 @@ export function updateContainer(
     container.pendingContext = context;
   }
 
-
+  /**
+   * 根据lane(优先级)计算当前节点的update对象
+   */
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
@@ -284,7 +288,10 @@ export function updateContainer(
     update.callback = callback;
   }
 
+  // 将update对象入队
   enqueueUpdate(current, update);
+
+  // 调度当前的Fiber节点(也就是rootFiber1)
   scheduleUpdateOnFiber(current, lane, eventTime);
 
   return lane;
