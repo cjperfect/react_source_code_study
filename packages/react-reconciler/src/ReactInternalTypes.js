@@ -175,13 +175,21 @@ export type Fiber = {|
 
 type BaseFiberRootProperties = {|
   // The type of root (legacy, batched, concurrent, etc.)
+
+  /* 
+  export type RootTag = 0 | 1 | 2;
+  export const LegacyRoot = 0;
+  export const BlockingRoot = 1;
+  export const ConcurrentRoot = 2;
+  */
   tag: RootTag,
 
-  // Any additional information from the host associated with this root.
+  // root节点, 也就是ReactDOM.render(<App />, document.getElementById('root'))的第二个参数
   containerInfo: any,
-  // Used only by persistent updates.
+  
   pendingChildren: any,
-  // The currently active root fiber. This is the mutable root of the tree.
+  
+  //current:Fiber对象 对应的是 root 节点，即整个应用根对象
   current: Fiber,
 
   pingCache: WeakMap<Wakeable, Set<mixed>> | Map<Wakeable, Set<mixed>> | null,

@@ -120,29 +120,51 @@ function FiberNode(
   mode: TypeOfMode,
 ) {
   // Instance
-  this.tag = tag;
-  this.key = key;
-  this.elementType = null;
-  this.type = null;
-  this.stateNode = null;
 
-  // Fiber
+   // tag 组件的类型 是函数组件还是类组件
+  this.tag = tag;
+  
+  this.key = key; 
+
+  this.elementType = null;
+
+  // 对于 函数组件，指函数本身，对于类组件，指class
+  this.type = null;
+
+  // Fiber对应的真实DOM节点
+  this.stateNode = null; 
+
+  // 以下属性用于连接其他Fiber节点形成Fiber树。
+
+  // 指向父fiber节点
   this.return = null;
+  
+  // 指向第一个子fiber节点
   this.child = null;
+
+  // 指向第一个兄弟fiber节点
   this.sibling = null;
   this.index = 0;
 
+  // 真实的DOM属性
   this.ref = null;
 
+  // 新传入的 props
   this.pendingProps = pendingProps;
+
+  // 之前的 props
   this.memoizedProps = null;
+
+  // 更新队列，用于暂存 setState 的值
   this.updateQueue = null;
+
+  // 之前的 state
   this.memoizedState = null;
   this.dependencies = null;
 
   this.mode = mode;
 
-  // Effects
+  // 保存本次更新会造成的DOM操作。比如删除，移动
   this.flags = NoFlags;
   this.nextEffect = null;
 
@@ -152,46 +174,9 @@ function FiberNode(
   this.lanes = NoLanes;
   this.childLanes = NoLanes;
 
+
+  //用于链接新树和旧树；旧->新，新->旧
   this.alternate = null;
-
-  if (enableProfilerTimer) {
-    // Note: The following is done to avoid a v8 performance cliff.
-    //
-    // Initializing the fields below to smis and later updating them with
-    // double values will cause Fibers to end up having separate shapes.
-    // This behavior/bug has something to do with Object.preventExtension().
-    // Fortunately this only impacts DEV builds.
-    // Unfortunately it makes React unusably slow for some applications.
-    // To work around this, initialize the fields below with doubles.
-    //
-    // Learn more about this here:
-    // https://github.com/facebook/react/issues/14365
-    // https://bugs.chromium.org/p/v8/issues/detail?id=8538
-    this.actualDuration = Number.NaN;
-    this.actualStartTime = Number.NaN;
-    this.selfBaseDuration = Number.NaN;
-    this.treeBaseDuration = Number.NaN;
-
-    // It's okay to replace the initial doubles with smis after initialization.
-    // This won't trigger the performance cliff mentioned above,
-    // and it simplifies other profiler code (including DevTools).
-    this.actualDuration = 0;
-    this.actualStartTime = -1;
-    this.selfBaseDuration = 0;
-    this.treeBaseDuration = 0;
-  }
-
-  if (__DEV__) {
-    // This isn't directly used but is handy for debugging internals:
-    this._debugID = debugCounter++;
-    this._debugSource = null;
-    this._debugOwner = null;
-    this._debugNeedsRemount = false;
-    this._debugHookTypes = null;
-    if (!hasBadMapPolyfill && typeof Object.preventExtensions === 'function') {
-      Object.preventExtensions(this);
-    }
-  }
 }
 
 // This is a constructor function, rather than a POJO constructor, still

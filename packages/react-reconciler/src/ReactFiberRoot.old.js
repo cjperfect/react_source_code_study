@@ -27,7 +27,7 @@ import {initializeUpdateQueue} from './ReactUpdateQueue.old';
 import {LegacyRoot, BlockingRoot, ConcurrentRoot} from './ReactRootTags';
 
 function FiberRootNode(containerInfo, tag, hydrate) {
-  this.tag = tag;
+  this.tag = tag; // root节点类型
   this.containerInfo = containerInfo;
   this.pendingChildren = null;
   this.current = null;
@@ -65,19 +65,6 @@ function FiberRootNode(containerInfo, tag, hydrate) {
     this.hydrationCallbacks = null;
   }
 
-  if (__DEV__) {
-    switch (tag) {
-      case BlockingRoot:
-        this._debugRootType = 'createBlockingRoot()';
-        break;
-      case ConcurrentRoot:
-        this._debugRootType = 'createRoot()';
-        break;
-      case LegacyRoot:
-        this._debugRootType = 'createLegacyRoot()';
-        break;
-    }
-  }
 }
 
 export function createFiberRoot(
@@ -86,17 +73,26 @@ export function createFiberRoot(
   hydrate: boolean,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
 ): FiberRoot {
+  // 创建fiberRoot(fiberRootNode)
   const root: FiberRoot = (new FiberRootNode(containerInfo, tag, hydrate): any);
+
+  console.log('fiberRoot', root);
+
   if (enableSuspenseCallback) {
     root.hydrationCallbacks = hydrationCallbacks;
   }
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
-  const uninitializedFiber = createHostRootFiber(tag);
+  const uninitializedFiber = createHostRootFiber(tag);// 创建rootFiber(fiberNode)
+
+  // 把rootFiber挂载到fiberRoot的current属性上  
   root.current = uninitializedFiber;
+
+  // 把fiberRoot挂载到rootFiber的stateNode属性上
   uninitializedFiber.stateNode = root;
 
+  // 初始化更新队列
   initializeUpdateQueue(uninitializedFiber);
 
   return root;
