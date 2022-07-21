@@ -370,17 +370,24 @@ export function getWorkInProgressRoot(): FiberRoot | null {
 }
 
 export function requestEventTime() {
+
+	// RenderContext: 代表react正在计算更新
+	// CommitContext: 代表react正在提交更新
+	// react更新分了两步, render 和 commit阶段
 	if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
-		// We're inside React, so it's fine to read the actual time.
+		// react 正在执行中, 直接返回当前的时间
 		return now();
 	}
-	// We're not inside React, so we may be in the middle of a browser event.
+
+	// 如果不在 react执行过程中
 	if (currentEventTime !== NoTimestamp) {
-		// Use the same start time for all updates until we enter React again.
+		// 返回上一次currentEventTime
 		return currentEventTime;
 	}
-	// This is the first update since React yielded. Compute a new start time.
+
+	// react 更新被打断后的首次更新, 计算新的currentEventTime
 	currentEventTime = now();
+
 	return currentEventTime;
 }
 
@@ -389,8 +396,8 @@ export function getCurrentTime() {
 }
 
 export function requestUpdateLane(fiber: Fiber): Lane {
-	// Special cases
-	const mode = fiber.mode;
+	// 表示当前组件下的子组件的渲染方式
+	const mode = fiber.mode; 
 	if ((mode & BlockingMode) === NoMode) {
 		return (SyncLane: Lane);
 	} else if ((mode & ConcurrentMode) === NoMode) {
@@ -402,32 +409,11 @@ export function requestUpdateLane(fiber: Fiber): Lane {
 		(executionContext & RenderContext) !== NoContext &&
 		workInProgressRootRenderLanes !== NoLanes
 	) {
-		// This is a render phase update. These are not officially supported. The
-		// old behavior is to give this the same "thread" (expiration time) as
-		// whatever is currently rendering. So if you call `setState` on a component
-		// that happens later in the same render, it will flush. Ideally, we want to
-		// remove the special case and treat them as if they came from an
-		// interleaved event. Regardless, this pattern is not officially supported.
-		// This behavior is only a fallback. The flag only exists until we can roll
-		// out the setState warning, since existing code might accidentally rely on
-		// the current behavior.
+		
 		return pickArbitraryLane(workInProgressRootRenderLanes);
 	}
 
-	// The algorithm for assigning an update to a lane should be stable for all
-	// updates at the same priority within the same event. To do this, the inputs
-	// to the algorithm must be the same. For example, we use the `renderLanes`
-	// to avoid choosing a lane that is already in the middle of rendering.
-	//
-	// However, the "included" lanes could be mutated in between updates in the
-	// same event, like if you perform an update inside `flushSync`. Or any other
-	// code path that might call `prepareFreshStack`.
-	//
-	// The trick we use is to cache the first of each of these inputs within an
-	// event. Then reset the cached values once we can be sure the event is over.
-	// Our heuristic for that is whenever we enter a concurrent work loop.
-	//
-	// We'll do the same for `currentEventPendingLanes` below.
+	
 	if (currentEventWipLanes === NoLanes) {
 		currentEventWipLanes = workInProgressRootIncludedLanes;
 	}
@@ -443,47 +429,34 @@ export function requestUpdateLane(fiber: Fiber): Lane {
 		return findTransitionLane(currentEventWipLanes, currentEventPendingLanes);
 	}
 
-	// TODO: Remove this dependency on the Scheduler priority.
-	// To do that, we're replacing it with an update lane priority.
+
+
+
+	// 根据记录下的事件的优先级，获取任务调度的优先级
 	const schedulerPriority = getCurrentPriorityLevel();
 
-	// The old behavior was using the priority level of the Scheduler.
-	// This couples React to the Scheduler internals, so we're replacing it
-	// with the currentUpdateLanePriority above. As an example of how this
-	// could be problematic, if we're not inside `Scheduler.runWithPriority`,
-	// then we'll get the priority of the current running Scheduler task,
-	// which is probably not what we want.
+
 	let lane;
 	if (
 		// TODO: Temporary. We're removing the concept of discrete updates.
 		(executionContext & DiscreteEventContext) !== NoContext &&
 		schedulerPriority === UserBlockingSchedulerPriority
 	) {
+		 // 如果是用户阻塞级别的事件，则通过InputDiscreteLanePriority 计算更新的优先级 lane
 		lane = findUpdateLane(InputDiscreteLanePriority, currentEventWipLanes);
 	} else {
+
+		// 否则依据事件的优先级计算 schedulerLanePriority
 		const schedulerLanePriority =
 			schedulerPriorityToLanePriority(schedulerPriority);
 
 		if (decoupleUpdatePriorityFromScheduler) {
-			// In the new strategy, we will track the current update lane priority
-			// inside React and use that priority to select a lane for this update.
-			// For now, we're just logging when they're different so we can assess.
+
 			const currentUpdateLanePriority = getCurrentUpdateLanePriority();
 
-			if (
-				schedulerLanePriority !== currentUpdateLanePriority &&
-				currentUpdateLanePriority !== NoLanePriority
-			) {
-				if (__DEV__) {
-					console.error(
-						"Expected current scheduler lane priority %s to match current update lane priority %s",
-						schedulerLanePriority,
-						currentUpdateLanePriority
-					);
-				}
-			}
 		}
 
+		// 根据计算得到的 schedulerLanePriority，计算更新的优先级 lane
 		lane = findUpdateLane(schedulerLanePriority, currentEventWipLanes);
 	}
 

@@ -183,51 +183,50 @@ export function cloneUpdateQueue<State>(
 
 export function createUpdate(eventTime: number, lane: Lane): Update<*> {
   const update: Update<*> = {
+
+    // 获取更新触发的时间
+    // 它的获取方法requestEventTime(), 其实本质就是performance.now()
     eventTime,
+
+    // 计算当前节点lane(优先级)
     lane,
 
     tag: UpdateState,
+
+    // 更新的内容，比如setState接收的第一个参数
     payload: null,
+
+    // 对应的回调，比如setState({}, callback )
     callback: null,
 
+    // 指向下一个更新, 页面中我们可能多次触发setState
     next: null,
   };
   return update;
 }
 
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
-  const updateQueue = fiber.updateQueue;
+  debugger
+  // 获取当前fiber身上的updateQueue对象
+  const updateQueue = fiber.updateQueue; 
   if (updateQueue === null) {
-    // Only occurs if the fiber has been unmounted.
+    // updateQueue为空, 说明当前的fiber还没有渲染, 直接退出即可
     return;
   }
 
   const sharedQueue: SharedQueue<State> = (updateQueue: any).shared;
-  const pending = sharedQueue.pending;
+  const pending = sharedQueue.pending; // shared.pending指向该链表的最后一个update对象
   if (pending === null) {
     // This is the first update. Create a circular list.
+    // 说明是首次更新, 需要创建循环链表
     update.next = update;
   } else {
+    // 不是首次更新, 那就把update对象插入到循环链表中
     update.next = pending.next;
     pending.next = update;
   }
   sharedQueue.pending = update;
-
-  if (__DEV__) {
-    if (
-      currentlyProcessingQueue === sharedQueue &&
-      !didWarnUpdateInsideUpdate
-    ) {
-      console.error(
-        'An update (setState, replaceState, or forceUpdate) was scheduled ' +
-          'from inside an update function. Update functions should be pure, ' +
-          'with zero side-effects. Consider using componentDidUpdate or a ' +
-          'callback.',
-      );
-      didWarnUpdateInsideUpdate = true;
-    }
-  }
-}
+ }
 
 export function enqueueCapturedUpdate<State>(
   workInProgress: Fiber,

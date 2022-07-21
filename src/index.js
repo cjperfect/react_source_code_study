@@ -1,20 +1,36 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-function App(props) {
-  const [a, setA] = React.useState("");
-  const content = (
-    <div
-      className="app-div"
-      onClick={() => {
-        setA(Math.random());
-      }}
-    >
-      haha{a}
-    </div>
-  );
-  console.log(content);
-  return content;
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      name: "chenjiang"
+    };
+  }
+  render() {
+    return (
+      <div
+        className="app-div"
+        onClick={() => {
+          this.setState({
+            name: 1
+          });
+          this.setState({
+            name: 2
+          });
+          this.setState({
+            name: 3
+          });
+          this.setState({
+            name: 4
+          });
+        }}
+      >
+        haha ---{this.state.name}
+      </div>
+    );
+  }
 }
 
 ReactDOM.render(<App />, document.getElementById("root"));

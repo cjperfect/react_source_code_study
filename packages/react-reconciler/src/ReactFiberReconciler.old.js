@@ -260,6 +260,8 @@ export function updateContainer(
   /* 当前触发更新时候的时间戳 */
   const eventTime = requestEventTime(); 
 
+  // console.log(eventTime, performance.now())
+
   // 计算当前节点lane(优先级)
   const lane = requestUpdateLane(current);
 
