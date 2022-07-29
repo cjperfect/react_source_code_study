@@ -4,12 +4,12 @@ import * as ReactDOM from "react-dom";
 function App(props) {
   const content = (
     <div className="parent">
+      parent文本
       <p className="child1">
-        child1
-        <span className="grandChildren1">grandChildren1</span>
-        <span className="grandChildren2">grandChildren2</span>
+        child1文本
+        <span className="grandChildren1"></span>
       </p>
-      <p className="child2">child2</p>
+      <p className="child2">child2文本</p>
     </div>
   );
   console.log(content);
