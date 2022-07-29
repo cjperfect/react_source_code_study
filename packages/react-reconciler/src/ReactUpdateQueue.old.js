@@ -206,7 +206,6 @@ export function createUpdate(eventTime: number, lane: Lane): Update<*> {
 }
 
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
-  debugger
   // 获取当前fiber身上的updateQueue对象
   const updateQueue = fiber.updateQueue; 
   if (updateQueue === null) {
