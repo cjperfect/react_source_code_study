@@ -1617,7 +1617,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
 	// nothing should rely on this, but relying on it here means that we don't
 	// need an additional field on the work in progress.
 	const current = unitOfWork.alternate;
-	setCurrentDebugFiberInDEV(unitOfWork);
+	// setCurrentDebugFiberInDEV(unitOfWork);
 
 	let next;
 	if (enableProfilerTimer && (unitOfWork.mode & ProfileMode) !== NoMode) {
@@ -1628,7 +1628,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
 		next = beginWork(current, unitOfWork, subtreeRenderLanes);
 	}
 
-	resetCurrentDebugFiberInDEV();
+	// resetCurrentDebugFiberInDEV();
 	unitOfWork.memoizedProps = unitOfWork.pendingProps;
 	if (next === null) {
 		// If this doesn't spawn new work, complete the current work.
@@ -1648,12 +1648,11 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 		// The current, flushed, state of this fiber is the alternate. Ideally
 		// nothing should rely on this, but relying on it here means that we don't
 		// need an additional field on the work in progress.
-		const current = completedWork.alternate;
-		const returnFiber = completedWork.return;
+		const current = completedWork.alternate; // 上一次更新后这个节点的信息
+		const returnFiber = completedWork.return; // 父节点
 
 		// Check if the work completed or if something threw.
 		if ((completedWork.flags & Incomplete) === NoFlags) {
-			setCurrentDebugFiberInDEV(completedWork);
 			let next;
 			if (
 				!enableProfilerTimer ||
@@ -1666,7 +1665,6 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 				// Update render duration assuming we didn't error.
 				stopProfilerTimerIfRunningAndRecordDelta(completedWork, false);
 			}
-			resetCurrentDebugFiberInDEV();
 
 			if (next !== null) {
 				// Completing this fiber spawned new work. Work on that next.
@@ -1678,12 +1676,9 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 
 			if (
 				returnFiber !== null &&
-				// Do not append effects to parents if a sibling failed to complete
 				(returnFiber.flags & Incomplete) === NoFlags
 			) {
-				// Append all the effects of the subtree and this fiber onto the effect
-				// list of the parent. The completion order of the children affects the
-				// side-effect order.
+
 				if (returnFiber.firstEffect === null) {
 					returnFiber.firstEffect = completedWork.firstEffect;
 				}
@@ -1694,17 +1689,9 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 					returnFiber.lastEffect = completedWork.lastEffect;
 				}
 
-				// If this fiber had side-effects, we append it AFTER the children's
-				// side-effects. We can perform certain side-effects earlier if needed,
-				// by doing multiple passes over the effect list. We don't want to
-				// schedule our own side-effect on our own list because if end up
-				// reusing children we'll schedule this effect onto itself since we're
-				// at the end.
 				const flags = completedWork.flags;
 
-				// Skip both NoWork and PerformedWork tags when creating the effect
-				// list. PerformedWork effect is read by React DevTools but shouldn't be
-				// committed.
+			
 				if (flags > PerformedWork) {
 					if (returnFiber.lastEffect !== null) {
 						returnFiber.lastEffect.nextEffect = completedWork;
@@ -1715,18 +1702,12 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 				}
 			}
 		} else {
-			// This fiber did not complete because something threw. Pop values off
-			// the stack without entering the complete phase. If this is a boundary,
-			// capture values if possible.
+	
 			const next = unwindWork(completedWork, subtreeRenderLanes);
 
-			// Because this fiber did not complete, don't reset its expiration time.
 
 			if (next !== null) {
-				// If completing this work spawned new work, do that next. We'll come
-				// back here again.
-				// Since we're restarting, remove anything that is not a host effect
-				// from the effect tag.
+	
 				next.flags &= HostEffectMask;
 				workInProgress = next;
 				return;
@@ -1736,10 +1717,8 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 				enableProfilerTimer &&
 				(completedWork.mode & ProfileMode) !== NoMode
 			) {
-				// Record the render duration for the fiber that errored.
 				stopProfilerTimerIfRunningAndRecordDelta(completedWork, false);
 
-				// Include the time spent working on failed children before continuing.
 				let actualDuration = completedWork.actualDuration;
 				let child = completedWork.child;
 				while (child !== null) {
@@ -1750,7 +1729,6 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 			}
 
 			if (returnFiber !== null) {
-				// Mark the parent fiber as incomplete and clear its effect list.
 				returnFiber.firstEffect = returnFiber.lastEffect = null;
 				returnFiber.flags |= Incomplete;
 			}
