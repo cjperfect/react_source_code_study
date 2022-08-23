@@ -1679,16 +1679,21 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 				(returnFiber.flags & Incomplete) === NoFlags
 			) {
 
+				// 说明父节点身上, 没有关于子节点副作用的信息
 				if (returnFiber.firstEffect === null) {
 					returnFiber.firstEffect = completedWork.firstEffect;
 				}
+				// 如果当前fiber的lastEffect有值
 				if (completedWork.lastEffect !== null) {
+					
 					if (returnFiber.lastEffect !== null) {
 						returnFiber.lastEffect.nextEffect = completedWork.firstEffect;
 					}
 					returnFiber.lastEffect = completedWork.lastEffect;
 				}
 
+
+				/* 当前节点也可能是有副作用的 */
 				const flags = completedWork.flags;
 
 			
@@ -1700,9 +1705,9 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 					}
 					returnFiber.lastEffect = completedWork;
 				}
+
 			}
 		} else {
-	
 			const next = unwindWork(completedWork, subtreeRenderLanes);
 
 
