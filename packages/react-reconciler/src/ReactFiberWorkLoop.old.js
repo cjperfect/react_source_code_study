@@ -1641,13 +1641,8 @@ function performUnitOfWork(unitOfWork: Fiber): void {
 }
 
 function completeUnitOfWork(unitOfWork: Fiber): void {
-	// Attempt to complete the current unit of work, then move to the next
-	// sibling. If there are no more siblings, return to the parent fiber.
 	let completedWork = unitOfWork;
 	do {
-		// The current, flushed, state of this fiber is the alternate. Ideally
-		// nothing should rely on this, but relying on it here means that we don't
-		// need an additional field on the work in progress.
 		const current = completedWork.alternate; // 上一次更新后这个节点的信息
 		const returnFiber = completedWork.return; // 父节点
 
@@ -1674,6 +1669,7 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 
 			resetChildLanes(completedWork);
 
+			// effect list构建过程
 			if (
 				returnFiber !== null &&
 				(returnFiber.flags & Incomplete) === NoFlags
@@ -1686,7 +1682,16 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 				// 如果当前fiber的lastEffect有值
 				if (completedWork.lastEffect !== null) {
 					
+					// 并且returnFiber的lastEffect有值, 说明之前有"兄弟"设置过了
+					/**
+					 * 以上图为例:
+					 * 1. 当我们走到了parent文本时候, 
+					 * 		此时的parent的firstEffect = parent文本 (returnFiber.firstEffect = completedWork)
+					 * 		lastEffect = parent文本 (returnFiber.lastEffect = completedWork)
+					 * 2. 走到child2时候, 发现returnFiber的lastEffect有值了
+					 */
 					if (returnFiber.lastEffect !== null) {
+
 						returnFiber.lastEffect.nextEffect = completedWork.firstEffect;
 					}
 					returnFiber.lastEffect = completedWork.lastEffect;
@@ -1696,8 +1701,8 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 				/* 当前节点也可能是有副作用的 */
 				const flags = completedWork.flags;
 
-			
 				if (flags > PerformedWork) {
+					// 父节点的lastEffect已经有值了, 把当前节点链接到effect list上
 					if (returnFiber.lastEffect !== null) {
 						returnFiber.lastEffect.nextEffect = completedWork;
 					} else {
@@ -1739,15 +1744,14 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
 			}
 		}
 
+		// 兄弟节点继续遍历, 
 		const siblingFiber = completedWork.sibling;
 		if (siblingFiber !== null) {
-			// If there is more work to do in this returnFiber, do that next.
 			workInProgress = siblingFiber;
 			return;
 		}
-		// Otherwise, return to the parent
+		// 遍历父节点
 		completedWork = returnFiber;
-		// Update the next thing we're working on in case something throws.
 		workInProgress = completedWork;
 	} while (completedWork !== null);
 
@@ -1835,6 +1839,9 @@ function resetChildLanes(completedWork: Fiber) {
 
 function commitRoot(root) {
 	const renderPriorityLevel = getCurrentPriorityLevel();
+
+	// rootFiber.firstEffect保存了一条需要执行的副作用的Fiber节点的单向链表effect list, 
+	// 这些Fiber节点的updateQueue中保存了变化的props。
 	runWithPriority(
 		ImmediateSchedulerPriority,
 		commitRootImpl.bind(null, root, renderPriorityLevel)
@@ -1844,12 +1851,6 @@ function commitRoot(root) {
 
 function commitRootImpl(root, renderPriorityLevel) {
 	do {
-		// `flushPassiveEffects` will call `flushSyncUpdateQueue` at the end, which
-		// means `flushPassiveEffects` will sometimes result in additional
-		// passive effects. So we need to keep flushing in a loop until there are
-		// no more pending effects.
-		// TODO: Might be better if `flushPassiveEffects` did not automatically
-		// flush synchronous work at the end, to avoid factoring hazards like this.
 		flushPassiveEffects();
 	} while (rootWithPendingPassiveEffects !== null);
 	flushRenderPhaseStrictModeWarningsInDEV();
@@ -1858,26 +1859,21 @@ function commitRootImpl(root, renderPriorityLevel) {
 		(executionContext & (RenderContext | CommitContext)) === NoContext,
 		"Should not already be working."
 	);
+	
+	// console.log(root); // 给个打印
 
+	// root === rootFiber,
 	const finishedWork = root.finishedWork;
+
+	// 优先级 
 	const lanes = root.finishedLanes;
 
-	if (__DEV__) {
-		if (enableDebugTracing) {
-			logCommitStarted(lanes);
-		}
-	}
 
 	if (enableSchedulingProfiler) {
 		markCommitStarted(lanes);
 	}
 
 	if (finishedWork === null) {
-		if (__DEV__) {
-			if (enableDebugTracing) {
-				logCommitStopped();
-			}
-		}
 
 		if (enableSchedulingProfiler) {
 			markCommitStopped();
@@ -1885,6 +1881,8 @@ function commitRootImpl(root, renderPriorityLevel) {
 
 		return null;
 	}
+
+	// 重置变量
 	root.finishedWork = null;
 	root.finishedLanes = NoLanes;
 
@@ -1894,18 +1892,12 @@ function commitRootImpl(root, renderPriorityLevel) {
 			"a bug in React. Please file an issue."
 	);
 
-	// commitRoot never returns a continuation; it always finishes synchronously.
-	// So we can clear these now to allow a new callback to be scheduled.
 	root.callbackNode = null;
 
-	// Update the first and last pending times on this root. The new first
-	// pending time is whatever is left on the root fiber.
+	// 合并优先级
 	let remainingLanes = mergeLanes(finishedWork.lanes, finishedWork.childLanes);
 	markRootFinished(root, remainingLanes);
 
-	// Clear already finished discrete updates in case that a later call of
-	// `flushDiscreteUpdates` starts a useless render pass which may cancels
-	// a scheduled timeout.
 	if (rootsWithPendingDiscreteUpdates !== null) {
 		if (
 			!hasDiscreteLanes(remainingLanes) &&
@@ -1916,18 +1908,14 @@ function commitRootImpl(root, renderPriorityLevel) {
 	}
 
 	if (root === workInProgressRoot) {
-		// We can reset these now that they are finished.
 		workInProgressRoot = null;
 		workInProgress = null;
 		workInProgressRootRenderLanes = NoLanes;
-	} else {
-		// This indicates that the last root we worked on is not the same one that
-		// we're committing now. This most commonly happens when a suspended root
-		// times out.
-	}
+	} 
 
-	// Get the list of effects.
+	// 获取副作用链表
 	let firstEffect;
+	console.log(finishedWork.flags, PerformedWork, finishedWork.flags > PerformedWork)
 	if (finishedWork.flags > PerformedWork) {
 		// A fiber's effect list consists only of its children, not itself. So if
 		// the root has an effect, we need to add it to the end of the list. The
