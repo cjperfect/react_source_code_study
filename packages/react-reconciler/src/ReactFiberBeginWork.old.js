@@ -2992,6 +2992,7 @@ function bailoutOnAlreadyFinishedWork(
   renderLanes: Lanes,
 ): Fiber | null {
   if (current !== null) {
+    // 重新使用原来的依赖
     // Reuse previous dependencies
     workInProgress.dependencies = current.dependencies;
   }
@@ -3001,9 +3002,11 @@ function bailoutOnAlreadyFinishedWork(
     stopProfilerTimerIfRunning(workInProgress);
   }
 
+  // 标记一下跳过的更新
   markSkippedUpdateLanes(workInProgress.lanes);
 
   // Check if the children have any pending work.
+  // 判断一下子节点有没有更新，没有的话，直接返回null
   if (!includesSomeLane(renderLanes, workInProgress.childLanes)) {
     // The children don't have any work either. We can skip them.
     // TODO: Once we add back resuming, we should check if the children are
@@ -3012,6 +3015,8 @@ function bailoutOnAlreadyFinishedWork(
   } else {
     // This fiber doesn't have work, but its subtree does. Clone the child
     // fibers and continue.
+
+    // 子节点有更新的话，从该fiber节点中复制出来所有的子节点，然后return出去。
     cloneChildFibers(current, workInProgress);
     return workInProgress.child;
   }
@@ -3085,7 +3090,14 @@ function beginWork(
   workInProgress: Fiber,
   renderLanes: Lanes,
 ): Fiber | null {
+
+  // 该fiber中的优先级，可通过判断它是否为空，从而决定该节点是否要更新。
   const updateLanes = workInProgress.lanes;
+
+  /**
+   * current是否存在从而判断是首次挂载还是后续的更新
+   * 如果是更新，还需要判断优先级够不够，不够的话就调用
+   */
 
   if (current !== null) {
     const oldProps = current.memoizedProps;
@@ -3094,18 +3106,16 @@ function beginWork(
     if (
       oldProps !== newProps ||
       hasLegacyContextChanged() ||
-      // Force a re-render if the implementation changed due to hot reload:
       (__DEV__ ? workInProgress.type !== current.type : false)
     ) {
-      // If props or context changed, mark the fiber as having performed work.
-      // This may be unset if the props are determined to be equal later (memo).
       didReceiveUpdate = true;
     } else if (!includesSomeLane(renderLanes, updateLanes)) {
+      // includesSomeLane ==> (a & b) !== NoLanes
+      // 说明这里不需要更新操作
       didReceiveUpdate = false;
-      // This fiber does not have any pending work. Bailout without entering
-      // the begin phase. There's still some bookkeeping we that needs to be done
-      // in this optimized path, mostly pushing stuff onto the stack.
+
       switch (workInProgress.tag) {
+        // 根据组件不同的类型，执行不同的操作
         case HostRoot:
           pushHostRootContext(workInProgress);
           resetHydrationState();
@@ -3275,6 +3285,8 @@ function beginWork(
           return updateOffscreenComponent(current, workInProgress, renderLanes);
         }
       }
+
+      // 拦截一下不需要更新的节点，重新拷贝一份放到
       return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
     } else {
       if ((current.flags & ForceUpdateForLegacySuspense) !== NoFlags) {
@@ -3298,8 +3310,11 @@ function beginWork(
   // the update queue. However, there's an exception: SimpleMemoComponent
   // sometimes bails out later in the begin phase. This indicates that we should
   // move this assignment out of the common path and into each branch.
+
+  // 进入更新阶段之前，要清空workInProgress的lanes。处理完更新队列过后会重新赋值的。
   workInProgress.lanes = NoLanes;
 
+  // 根据不同的节点类型来处理节点的更新操作。
   switch (workInProgress.tag) {
     case IndeterminateComponent: {
       return mountIndeterminateComponent(
