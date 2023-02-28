@@ -121,17 +121,20 @@ function FiberNode(
 ) {
   // Instance
 
-   // tag 组件的类型 是函数组件还是类组件
+   // 组件的类型 FunctionComponent、classComponent、HostComponent（指的是DOM节点对应的Fiber节点）
   this.tag = tag;
   
   this.key = key; 
 
+  // 大多数情况下于tag相同，使用React.memo包裹时候，elementType和tag不同
   this.elementType = null;
 
-  // 对于 函数组件，指函数本身，对于类组件，指class
+  // 对于FunctionComponent，指函数本身
+  // 对于ClassComponent，指class
+  // 对于HostComponet，指的是DOM节点tagName
   this.type = null;
 
-  // Fiber对应的真实DOM节点
+  // 对于HostComponent来说指的是对应的真实的DOM节点
   this.stateNode = null; 
 
   // 以下属性用于连接其他Fiber节点形成Fiber树。
@@ -146,7 +149,7 @@ function FiberNode(
   this.sibling = null;
   this.index = 0;
 
-  // 真实的DOM属性
+  // ref属性
   this.ref = null;
 
   // 新传入的 props
